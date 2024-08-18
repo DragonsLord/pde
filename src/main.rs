@@ -1,6 +1,9 @@
+pub mod utils;
+
 use std::path::PathBuf;
 
-use clap::{Parser, Subcommand};
+use clap::{CommandFactory, Parser, Subcommand};
+use utils::notification::{send_notification, Notification};
 
 #[derive(Parser)]
 #[command(version, about, long_about = None)]
@@ -15,11 +18,9 @@ struct Cli {
 
 #[derive(Subcommand)]
 enum Commands {
-    /// does testing things
-    Test {
-        /// lists test values
+    Notify {
         #[arg(short, long)]
-        list: bool,
+        message: String,
     },
 }
 
@@ -33,13 +34,15 @@ fn main() {
     // You can check for the existence of subcommands, and if found use their
     // matches just as you would the top level cmd
     match &cli.command {
-        Some(Commands::Test { list }) => {
-            if *list {
-                println!("Printing testing lists...");
-            } else {
-                println!("Not printing testing lists...");
-            }
+        Some(Commands::Notify { message }) => {
+            send_notification(
+                Notification::message(message)
+                    .timeout(5000)
+                    .sync_group("user-notification"),
+            );
         }
-        None => {}
+        None => {
+            Cli::command().print_long_help().expect("help failed");
+        }
     }
 }
