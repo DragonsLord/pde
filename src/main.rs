@@ -1,8 +1,10 @@
+pub mod commands;
 pub mod utils;
 
 use std::path::PathBuf;
 
 use clap::{CommandFactory, Parser, Subcommand};
+use commands::volume::{execute_volume_command, VolumeCommand};
 use utils::notification::{send_notification, Notification};
 
 #[derive(Parser)]
@@ -22,6 +24,7 @@ enum Commands {
         #[arg(short, long)]
         message: String,
     },
+    Volume(VolumeCommand),
 }
 
 fn main() {
@@ -41,6 +44,7 @@ fn main() {
                     .sync_group("user-notification"),
             );
         }
+        Some(Commands::Volume(cmd)) => execute_volume_command(cmd),
         None => {
             Cli::command().print_long_help().expect("help failed");
         }
