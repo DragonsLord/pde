@@ -1,3 +1,4 @@
+use anyhow::Result;
 use clap::Args;
 
 use crate::utils::{
@@ -35,30 +36,34 @@ impl VolumeCommandHandler {
         }
     }
 
-    fn handle(self, cmd: &VolumeCommand) {
+    fn handle(self, cmd: &VolumeCommand) -> Result<()> {
         if cmd.options.increment {
-            self.ctl.increment();
-            self.notify()
+            self.ctl.increment()?;
+            self.notify()?;
         } else if cmd.options.decrement {
-            self.ctl.decrement();
-            self.notify()
+            self.ctl.decrement()?;
+            self.notify()?;
         } else if cmd.options.toggle_mute {
-            self.ctl.toggle_mute();
-            self.notify()
+            self.ctl.toggle_mute()?;
+            self.notify()?;
         }
+
+        Ok(())
     }
 
-    fn notify(self) {
-        let volume_value = self.ctl.get();
+    fn notify(self) -> Result<()> {
+        let volume_value = self.ctl.get()?;
         let volume_pct = volume_value * 100f32;
         send_notification(
-            Notification::message(&format!("Volume: {}%", volume_pct))
+            Notification::message(&format!("Volume: {:.0}%", volume_pct))
                 .transient()
                 .sync_group("pde_volume"),
-        )
+        )?;
+
+        Ok(())
     }
 }
 
-pub fn execute_volume_command(cmd: &VolumeCommand) {
-    VolumeCommandHandler::create().handle(cmd);
+pub fn execute_volume_command(cmd: &VolumeCommand) -> Result<()> {
+    VolumeCommandHandler::create().handle(cmd)
 }

@@ -1,3 +1,5 @@
+use super::command_extensions::CommandExtensions;
+use anyhow::Result;
 use std::process::Command;
 
 pub struct Notification {
@@ -43,7 +45,7 @@ impl Notification {
     }
 }
 
-pub fn send_notification(notification: Notification) {
+pub fn send_notification(notification: Notification) -> Result<()> {
     let mut cmd = Command::new("notify-send");
 
     if notification.transient {
@@ -61,6 +63,7 @@ pub fn send_notification(notification: Notification) {
     cmd.args(["-u", &notification.urgency])
         .args(["-t", &notification.timeout.to_string()])
         .arg(notification.message)
-        .spawn()
-        .expect("notify-send command filed");
+        .pde_run()?;
+
+    Ok(())
 }

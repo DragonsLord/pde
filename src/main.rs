@@ -3,6 +3,7 @@ pub mod utils;
 
 use std::path::PathBuf;
 
+use anyhow::Result;
 use clap::{CommandFactory, Parser, Subcommand};
 use commands::volume::{execute_volume_command, VolumeCommand};
 use utils::notification::{send_notification, Notification};
@@ -27,26 +28,26 @@ enum Commands {
     Volume(VolumeCommand),
 }
 
-fn main() {
+fn main() -> Result<()> {
     let cli = Cli::parse();
 
     if let Some(config_path) = cli.config.as_deref() {
         println!("Value for config: {}", config_path.display());
     }
 
-    // You can check for the existence of subcommands, and if found use their
-    // matches just as you would the top level cmd
     match &cli.command {
         Some(Commands::Notify { message }) => {
             send_notification(
                 Notification::message(message)
                     .timeout(5000)
                     .sync_group("user-notification"),
-            );
+            )?;
         }
-        Some(Commands::Volume(cmd)) => execute_volume_command(cmd),
+        Some(Commands::Volume(cmd)) => execute_volume_command(cmd)?,
         None => {
-            Cli::command().print_long_help().expect("help failed");
+            Cli::command().print_long_help()?;
         }
     }
+
+    Ok(())
 }
