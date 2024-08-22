@@ -4,8 +4,8 @@ pub mod utils;
 use std::path::PathBuf;
 
 use anyhow::Result;
-use clap::{CommandFactory, Parser, Subcommand};
-use commands::volume::{execute_volume_command, VolumeCommand};
+use clap::{Parser, Subcommand};
+use commands::volume::{VolumeCommand, VolumeCommandConfig, VolumeCommandHandler};
 use utils::notification::{send_notification, Notification};
 
 #[derive(Parser)]
@@ -16,7 +16,7 @@ struct Cli {
     config: Option<PathBuf>,
 
     #[command(subcommand)]
-    command: Option<Commands>,
+    command: Commands,
 }
 
 #[derive(Subcommand)]
@@ -36,17 +36,20 @@ fn main() -> Result<()> {
     }
 
     match &cli.command {
-        Some(Commands::Notify { message }) => {
+        Commands::Notify { message } => {
             send_notification(
                 Notification::message(message)
                     .timeout(5000)
                     .sync_group("user-notification"),
             )?;
         }
-        Some(Commands::Volume(cmd)) => execute_volume_command(cmd)?,
-        None => {
-            Cli::command().print_long_help()?;
-        }
+        // TODO: resolve config from environment
+        Commands::Volume(cmd) => VolumeCommandHandler::create(VolumeCommandConfig {
+            step: 2,
+            limit: 1.2,
+            notification_timeout: 3000,
+        })
+        .handle(cmd)?,
     }
 
     Ok(())

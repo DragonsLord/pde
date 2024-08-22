@@ -1,5 +1,5 @@
 use anyhow::Result;
-use clap::Args;
+use clap::{Args, Subcommand};
 
 use crate::utils::{
     notification::{send_notification, Notification},
@@ -8,44 +8,53 @@ use crate::utils::{
 
 #[derive(Args)]
 pub struct VolumeCommand {
-    #[command(flatten)]
-    options: VolumeOptions,
+    #[command(subcommand)]
+    command: VolumeSubcommands,
 }
 
-#[derive(Args)]
-#[group(required = true, multiple = false)]
-struct VolumeOptions {
-    #[arg(short, long)]
-    increment: bool,
-
-    #[arg(short, long)]
-    decrement: bool,
-
-    #[arg(short = 'm', long)]
-    toggle_mute: bool,
+#[derive(Subcommand)]
+enum VolumeSubcommands {
+    #[clap(alias = "inc")]
+    Increase,
+    #[clap(alias = "dec")]
+    Decrease,
+    #[clap(alias = "-m")]
+    ToggleMute,
 }
 
-struct VolumeCommandHandler {
+pub struct VolumeCommandConfig {
+    pub step: i8,
+    pub limit: f32,
+    pub notification_timeout: i32,
+}
+
+pub struct VolumeCommandHandler {
     ctl: VolumeControl,
+    config: VolumeCommandConfig,
 }
 
 impl VolumeCommandHandler {
-    fn create() -> Self {
+    pub fn create(config: VolumeCommandConfig) -> Self {
         Self {
-            ctl: VolumeControl::new("@DEFAULT_AUDIO_SINK@", 2, 1.2),
+            ctl: VolumeControl::new("@DEFAULT_AUDIO_SINK@", config.step, config.limit),
+            config,
         }
     }
 
-    fn handle(self, cmd: &VolumeCommand) -> Result<()> {
-        if cmd.options.increment {
-            self.ctl.increment()?;
-            self.notify()?;
-        } else if cmd.options.decrement {
-            self.ctl.decrement()?;
-            self.notify()?;
-        } else if cmd.options.toggle_mute {
-            self.ctl.toggle_mute()?;
-            self.notify()?;
+    pub fn handle(self, cmd: &VolumeCommand) -> Result<()> {
+        match cmd.command {
+            VolumeSubcommands::Increase => {
+                self.ctl.increment()?;
+                self.notify()?;
+            }
+            VolumeSubcommands::Decrease => {
+                self.ctl.decrement()?;
+                self.notify()?;
+            }
+            VolumeSubcommands::ToggleMute => {
+                self.ctl.toggle_mute()?;
+                self.notify()?;
+            }
         }
 
         Ok(())
@@ -57,13 +66,10 @@ impl VolumeCommandHandler {
         send_notification(
             Notification::message(&format!("Volume: {:.0}%", volume_pct))
                 .transient()
+                .timeout(self.config.notification_timeout)
                 .sync_group("pde_volume"),
         )?;
 
         Ok(())
     }
-}
-
-pub fn execute_volume_command(cmd: &VolumeCommand) -> Result<()> {
-    VolumeCommandHandler::create().handle(cmd)
 }
