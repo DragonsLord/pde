@@ -1,6 +1,7 @@
-use super::command_extensions::CommandExtensions;
 use anyhow::{anyhow, Result};
 use std::{ffi::OsStr, process::Command};
+
+use crate::utils::command_extensions::CommandExtensions;
 
 pub struct VolumeControl {
     sink: String,

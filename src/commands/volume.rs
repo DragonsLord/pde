@@ -1,10 +1,7 @@
 use anyhow::Result;
 use clap::{Args, Subcommand};
 
-use crate::utils::{
-    notification::{send_notification, Notification},
-    volume::VolumeControl,
-};
+use crate::modules::{notification::Notification, volume::VolumeControl};
 
 #[derive(Args)]
 pub struct VolumeCommand {
@@ -63,12 +60,11 @@ impl VolumeCommandHandler {
     fn notify(self) -> Result<()> {
         let volume_value = self.ctl.get()?;
         let volume_pct = volume_value * 100f32;
-        send_notification(
-            Notification::message(&format!("Volume: {:.0}%", volume_pct))
-                .transient()
-                .timeout(self.config.notification_timeout)
-                .sync_group("pde_volume"),
-        )?;
+        Notification::message(&format!("Volume: {:.0}%", volume_pct))
+            .transient()
+            .timeout(self.config.notification_timeout)
+            .sync_group("pde_volume")
+            .send()?;
 
         Ok(())
     }

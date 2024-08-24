@@ -1,4 +1,5 @@
 pub mod commands;
+pub mod modules;
 pub mod utils;
 
 use std::path::PathBuf;
@@ -6,7 +7,7 @@ use std::path::PathBuf;
 use anyhow::Result;
 use clap::{Parser, Subcommand};
 use commands::volume::{VolumeCommand, VolumeCommandConfig, VolumeCommandHandler};
-use utils::notification::{send_notification, Notification};
+use modules::notification::Notification;
 
 #[derive(Parser)]
 #[command(version, about, long_about = None)]
@@ -36,13 +37,10 @@ fn main() -> Result<()> {
     }
 
     match &cli.command {
-        Commands::Notify { message } => {
-            send_notification(
-                Notification::message(message)
-                    .timeout(5000)
-                    .sync_group("user-notification"),
-            )?;
-        }
+        Commands::Notify { message } => Notification::message(message)
+            .timeout(5000)
+            .sync_group("user-notification")
+            .send()?,
         // TODO: resolve config from environment
         Commands::Volume(cmd) => VolumeCommandHandler::create(VolumeCommandConfig {
             step: 2,

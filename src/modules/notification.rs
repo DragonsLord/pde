@@ -1,6 +1,7 @@
-use super::command_extensions::CommandExtensions;
 use anyhow::Result;
 use std::process::Command;
+
+use crate::utils::command_extensions::CommandExtensions;
 
 pub struct Notification {
     message: String,
@@ -43,27 +44,27 @@ impl Notification {
             .push(format!("string:x-canonical-private-synchronous:{}", group));
         self
     }
-}
 
-pub fn send_notification(notification: Notification) -> Result<()> {
-    let mut cmd = Command::new("notify-send");
+    pub fn send(self) -> Result<()> {
+        let mut cmd = Command::new("notify-send");
 
-    if notification.transient {
-        cmd.arg("-e");
+        if self.transient {
+            cmd.arg("-e");
+        }
+
+        if let Some(icon) = self.icon {
+            cmd.arg("-i ".to_owned() + &icon);
+        }
+
+        for hint in self.hints {
+            cmd.args(["-h", &hint]);
+        }
+
+        cmd.args(["-u", &self.urgency])
+            .args(["-t", &self.timeout.to_string()])
+            .arg(self.message)
+            .pde_run()?;
+
+        Ok(())
     }
-
-    if let Some(icon) = notification.icon {
-        cmd.arg("-i ".to_owned() + &icon);
-    }
-
-    for hint in notification.hints {
-        cmd.args(["-h", &hint]);
-    }
-
-    cmd.args(["-u", &notification.urgency])
-        .args(["-t", &notification.timeout.to_string()])
-        .arg(notification.message)
-        .pde_run()?;
-
-    Ok(())
 }
