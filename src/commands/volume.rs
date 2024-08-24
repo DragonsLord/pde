@@ -1,7 +1,10 @@
 use anyhow::Result;
 use clap::{Args, Subcommand};
 
-use crate::modules::{notification::Notification, volume::VolumeControl};
+use crate::{
+    config::Config,
+    modules::{notification::Notification, volume::VolumeControl},
+};
 
 #[derive(Args)]
 pub struct VolumeCommand {
@@ -19,22 +22,23 @@ enum VolumeSubcommands {
     ToggleMute,
 }
 
-pub struct VolumeCommandConfig {
-    pub step: i8,
-    pub limit: f32,
-    pub notification_timeout: i32,
-}
-
 pub struct VolumeCommandHandler {
     ctl: VolumeControl,
-    config: VolumeCommandConfig,
+    notification_timeout: i32,
 }
 
 impl VolumeCommandHandler {
-    pub fn create(config: VolumeCommandConfig) -> Self {
+    pub fn create(config: &Config) -> Self {
         Self {
-            ctl: VolumeControl::new("@DEFAULT_AUDIO_SINK@", config.step, config.limit),
-            config,
+            ctl: VolumeControl::new(
+                &config.volume.audio_sink,
+                config.volume.step,
+                config.volume.limit,
+            ),
+            notification_timeout: config
+                .volume
+                .notification_timeout_ms
+                .unwrap_or(config.general.notification_timeout_ms),
         }
     }
 
@@ -62,7 +66,7 @@ impl VolumeCommandHandler {
         let volume_pct = volume_value * 100f32;
         Notification::message(&format!("Volume: {:.0}%", volume_pct))
             .transient()
-            .timeout(self.config.notification_timeout)
+            .timeout(self.notification_timeout)
             .sync_group("pde_volume")
             .send()?;
 

@@ -1,9 +1,12 @@
-use anyhow::Result;
+use anyhow::{bail, Result};
 use clap::{Args, Subcommand};
 
-use crate::modules::{
-    brightness::{BrightnessControl, BrightnessControlStep},
-    notification::Notification,
+use crate::{
+    config::Config,
+    modules::{
+        brightness::{BrightnessControl, BrightnessControlStep},
+        notification::Notification,
+    },
 };
 
 #[derive(Args)]
@@ -26,19 +29,22 @@ enum BrightnessSubcommands {
     KeyboardDecrease,
 }
 
-pub struct BrightnessCommandConfig {
-    pub step: i8,
-    pub notification_timeout: i32,
-    pub keyboard_device: String,
-}
-
 pub struct BrightnessCommandHandler {
-    config: BrightnessCommandConfig,
+    step: i8,
+    notification_timeout: i32,
+    keyboard_device: Option<String>,
 }
 
 impl BrightnessCommandHandler {
-    pub fn create(config: BrightnessCommandConfig) -> Self {
-        Self { config }
+    pub fn create(config: &Config) -> Self {
+        Self {
+            step: config.brightness.step,
+            notification_timeout: config
+                .brightness
+                .notification_timeout_ms
+                .unwrap_or(config.general.notification_timeout_ms),
+            keyboard_device: config.brightness.keyboard_device.to_owned(),
+        }
     }
 
     pub fn handle(self, cmd: &BrightnessCommand) -> Result<()> {
@@ -59,11 +65,11 @@ impl BrightnessCommandHandler {
                 self.notify(&ctl)?;
             }
             BrightnessSubcommands::KeyboardIncrease => {
-                let ctl = self.keyboard_ctl();
+                let ctl = self.keyboard_ctl()?;
                 ctl.increment()?;
             }
             BrightnessSubcommands::KeyboardDecrease => {
-                let ctl = self.keyboard_ctl();
+                let ctl = self.keyboard_ctl()?;
                 ctl.decrement()?;
             }
         }
@@ -72,21 +78,24 @@ impl BrightnessCommandHandler {
     }
 
     fn screen_ctl(&self) -> BrightnessControl {
-        BrightnessControl::new(BrightnessControlStep::Percent(self.config.step), None)
+        BrightnessControl::new(BrightnessControlStep::Percent(self.step), None)
     }
 
-    fn keyboard_ctl(&self) -> BrightnessControl {
-        BrightnessControl::new(
+    fn keyboard_ctl(&self) -> Result<BrightnessControl> {
+        if self.keyboard_device.is_none() {
+            bail!("brightness.keyboard_device is not defined");
+        }
+        Ok(BrightnessControl::new(
             BrightnessControlStep::Absolute(1),
-            Some(self.config.keyboard_device.to_owned()),
-        )
+            self.keyboard_device.to_owned(),
+        ))
     }
 
     fn notify(self, ctl: &BrightnessControl) -> Result<()> {
         let brightness_value = ctl.get()?;
         Notification::message(&format!("Brightness: {:.0}%", brightness_value))
             .transient()
-            .timeout(self.config.notification_timeout)
+            .timeout(self.notification_timeout)
             .sync_group("pde_brightness")
             .send()?;
 

@@ -662,6 +662,8 @@ dependencies = [
  "anyhow",
  "clap",
  "image",
+ "serde",
+ "toml",
 ]
 
 [[package]]
