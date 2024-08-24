@@ -10,6 +10,7 @@ use std::{
 use anyhow::Result;
 use clap::{Parser, Subcommand};
 use commands::{
+    brightness::{BrightnessCommand, BrightnessCommandConfig, BrightnessCommandHandler},
     theme::{ThemeCommand, ThemeCommandConfig, ThemeCommandHandler},
     volume::{VolumeCommand, VolumeCommandConfig, VolumeCommandHandler},
 };
@@ -28,6 +29,7 @@ struct Cli {
 #[derive(Subcommand)]
 enum Commands {
     Volume(VolumeCommand),
+    Brightness(BrightnessCommand),
     Theme(ThemeCommand),
 }
 
@@ -48,6 +50,12 @@ fn main() -> Result<()> {
         Commands::Volume(cmd) => VolumeCommandHandler::create(VolumeCommandConfig {
             step: 2,
             limit: 1.2,
+            notification_timeout: 3000,
+        })
+        .handle(cmd)?,
+        Commands::Brightness(cmd) => BrightnessCommandHandler::create(BrightnessCommandConfig {
+            step: 2,
+            keyboard_device: "asus::kbd_backlight".to_owned(),
             notification_timeout: 3000,
         })
         .handle(cmd)?,
