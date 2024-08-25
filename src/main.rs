@@ -8,6 +8,7 @@ use std::path::PathBuf;
 use anyhow::Result;
 use clap::{Parser, Subcommand};
 use commands::{
+    application::{ApplicationCommand, ApplicationCommandHandler},
     brightness::{BrightnessCommand, BrightnessCommandHandler},
     theme::{ThemeCommand, ThemeCommandHandler},
     volume::{VolumeCommand, VolumeCommandHandler},
@@ -27,6 +28,8 @@ struct Cli {
 
 #[derive(Subcommand)]
 enum Commands {
+    #[clap(alias = "app")]
+    Application(ApplicationCommand),
     Volume(VolumeCommand),
     Brightness(BrightnessCommand),
     Theme(ThemeCommand),
@@ -37,6 +40,7 @@ fn main() -> Result<()> {
 
     let config = Config::parse(cli.config)?;
     match &cli.command {
+        Commands::Application(cmd) => ApplicationCommandHandler::create().handle(cmd)?,
         Commands::Theme(cmd) => ThemeCommandHandler::create(&config).handle(cmd)?,
         Commands::Volume(cmd) => VolumeCommandHandler::create(&config).handle(cmd)?,
         Commands::Brightness(cmd) => BrightnessCommandHandler::create(&config).handle(cmd)?,

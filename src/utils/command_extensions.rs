@@ -4,6 +4,8 @@ use std::process::Command;
 pub trait CommandExtensions {
     fn pde_run(&mut self) -> Result<Vec<u8>>;
 
+    fn is_running(process: &str) -> Result<bool>;
+
     fn killall_if_running(process: &str) -> Result<()>;
 
     fn dispatch(program: &str) -> Command;
@@ -23,7 +25,7 @@ impl CommandExtensions for Command {
         bail!("[{}]\n{}", program, &err_out)
     }
 
-    fn killall_if_running(process: &str) -> Result<()> {
+    fn is_running(process: &str) -> Result<bool> {
         let out = Command::new("pgrep").arg(process).output()?;
         let exit_code = out
             .status
@@ -31,7 +33,11 @@ impl CommandExtensions for Command {
             .expect("did not receive status code from pgrep");
 
         // found matched processes
-        if exit_code == 0 {
+        Ok(exit_code == 0)
+    }
+
+    fn killall_if_running(process: &str) -> Result<()> {
+        if Self::is_running(process)? {
             Command::new("killall").arg(process).pde_run()?;
         }
 
