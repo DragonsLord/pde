@@ -33,7 +33,6 @@ pub struct Config {
 impl Config {
     pub fn parse(input_path: Option<PathBuf>) -> Result<Self> {
         let config_path = Self::resolve_path(input_path);
-        dbg!(&config_path);
         if !config_path.exists() {
             return Ok(Self::default());
         }

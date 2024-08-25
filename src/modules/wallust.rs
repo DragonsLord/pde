@@ -1,5 +1,8 @@
 use anyhow::Result;
-use std::{path::Path, process::Command};
+use std::{
+    path::Path,
+    process::{Command, Stdio},
+};
 
 use crate::utils::command_extensions::CommandExtensions;
 
@@ -15,10 +18,11 @@ impl Wallust {
 
     pub fn update_terminal(wallpaper_path: &Path) -> Result<()> {
         Command::new("wallust")
-            .arg("run")
-            .arg("-u")
+            .args(["run", "--skip-templates", "--update-current", "--quiet"])
             .arg(wallpaper_path)
+            .stdout(Stdio::inherit())
             .pde_run()?;
+
         Ok(())
     }
 }
