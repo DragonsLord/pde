@@ -36,7 +36,6 @@ fn main() -> Result<()> {
     let cli = Cli::parse();
 
     let config = Config::parse(cli.config)?;
-
     match &cli.command {
         Commands::Theme(cmd) => ThemeCommandHandler::create(&config).handle(cmd)?,
         Commands::Volume(cmd) => VolumeCommandHandler::create(&config).handle(cmd)?,

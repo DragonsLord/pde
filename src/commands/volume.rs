@@ -1,3 +1,5 @@
+use std::path::PathBuf;
+
 use anyhow::Result;
 use clap::{Args, Subcommand};
 
@@ -25,6 +27,7 @@ enum VolumeSubcommands {
 pub struct VolumeCommandHandler {
     ctl: VolumeControl,
     notification_timeout: i32,
+    icons_dir: PathBuf,
 }
 
 impl VolumeCommandHandler {
@@ -39,6 +42,7 @@ impl VolumeCommandHandler {
                 .volume
                 .notification_timeout_ms
                 .unwrap_or(config.general.notification_timeout_ms),
+            icons_dir: config.general.icons_dir(),
         }
     }
 
@@ -46,27 +50,28 @@ impl VolumeCommandHandler {
         match cmd.command {
             VolumeSubcommands::Increase => {
                 self.ctl.increment()?;
-                self.notify()?;
+                self.notify("plus")?;
             }
             VolumeSubcommands::Decrease => {
                 self.ctl.decrement()?;
-                self.notify()?;
+                self.notify("minus")?;
             }
             VolumeSubcommands::ToggleMute => {
                 self.ctl.toggle_mute()?;
-                self.notify()?;
+                self.notify("off")?;
             }
         }
 
         Ok(())
     }
 
-    fn notify(self) -> Result<()> {
+    fn notify(self, icon: &str) -> Result<()> {
         let volume_value = self.ctl.get()?;
         let volume_pct = volume_value * 100f32;
         Notification::message(&format!("Volume: {:.0}%", volume_pct))
             .transient()
             .timeout(self.notification_timeout)
+            .icon(&self.icons_dir.join(format!("volume-{}.svg", icon)))
             .sync_group("pde_volume")
             .send()?;
 

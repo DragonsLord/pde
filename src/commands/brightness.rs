@@ -1,3 +1,5 @@
+use std::path::PathBuf;
+
 use anyhow::{bail, Result};
 use clap::{Args, Subcommand};
 
@@ -33,6 +35,7 @@ pub struct BrightnessCommandHandler {
     step: i8,
     notification_timeout: i32,
     keyboard_device: Option<String>,
+    icons_dir: PathBuf,
 }
 
 impl BrightnessCommandHandler {
@@ -44,6 +47,7 @@ impl BrightnessCommandHandler {
                 .notification_timeout_ms
                 .unwrap_or(config.general.notification_timeout_ms),
             keyboard_device: config.brightness.keyboard_device.to_owned(),
+            icons_dir: config.general.icons_dir(),
         }
     }
 
@@ -52,17 +56,17 @@ impl BrightnessCommandHandler {
             BrightnessSubcommands::Increase => {
                 let ctl = self.screen_ctl();
                 ctl.increment()?;
-                self.notify(&ctl)?;
+                self.notify(&ctl, "plus")?;
             }
             BrightnessSubcommands::Decrease => {
                 let ctl = self.screen_ctl();
                 ctl.decrement()?;
-                self.notify(&ctl)?;
+                self.notify(&ctl, "minus")?;
             }
             BrightnessSubcommands::ToggleScreen => {
                 let ctl = self.screen_ctl();
                 ctl.toggle()?;
-                self.notify(&ctl)?;
+                self.notify(&ctl, "empty")?;
             }
             BrightnessSubcommands::KeyboardIncrease => {
                 let ctl = self.keyboard_ctl()?;
@@ -91,12 +95,13 @@ impl BrightnessCommandHandler {
         ))
     }
 
-    fn notify(self, ctl: &BrightnessControl) -> Result<()> {
+    fn notify(self, ctl: &BrightnessControl, icon: &str) -> Result<()> {
         let brightness_value = ctl.get()?;
         Notification::message(&format!("Brightness: {:.0}%", brightness_value))
             .transient()
             .timeout(self.notification_timeout)
             .sync_group("pde_brightness")
+            .icon(&self.icons_dir.join(format!("brightness-{}.svg", icon)))
             .send()?;
 
         Ok(())

@@ -1,31 +1,31 @@
 use anyhow::Result;
-use std::process::Command;
+use std::{path::Path, process::Command};
 
-use crate::utils::command_extensions::CommandExtensions;
+use crate::{config::defaults::Defaults, utils::command_extensions::CommandExtensions};
 
-pub struct Notification {
+pub struct Notification<'a> {
     message: String,
-    icon: Option<String>,
+    icon: Option<&'a Path>,
     timeout: i32,
     urgency: String, // low, normal, critical
     transient: bool,
     hints: Vec<String>,
 }
 
-impl Notification {
+impl<'a> Notification<'a> {
     pub fn message(msg: &str) -> Self {
         Self {
             message: msg.to_owned(),
             icon: None,
-            timeout: 3000, // TODO: default timeout from settings ??
+            timeout: Defaults::notification_timeout_ms(),
             urgency: "low".to_owned(),
             transient: false,
             hints: vec![],
         }
     }
 
-    pub fn icon(mut self, icon_path: &str) -> Self {
-        self.icon = Some(icon_path.to_owned());
+    pub fn icon(mut self, icon_path: &'a Path) -> Self {
+        self.icon = Some(icon_path);
         self
     }
 
@@ -53,7 +53,7 @@ impl Notification {
         }
 
         if let Some(icon) = self.icon {
-            cmd.arg("-i ".to_owned() + &icon);
+            cmd.arg("-i").arg(icon);
         }
 
         for hint in self.hints {
