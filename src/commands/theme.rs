@@ -18,7 +18,6 @@ pub struct ThemeCommand {
 enum ThemeSubcommands {
     SetWallpaper { wallpaper: PathBuf },
     InitWallpaper,
-    InitTerminal,
 }
 
 pub struct ThemeCommandHandler {
@@ -40,9 +39,6 @@ impl ThemeCommandHandler {
             ThemeSubcommands::InitWallpaper => {
                 self.init_wallpaper()?;
             }
-            ThemeSubcommands::InitTerminal => {
-                self.init_terminal()?;
-            }
         }
         Ok(())
     }
@@ -61,11 +57,6 @@ impl ThemeCommandHandler {
 
     fn init_wallpaper(self) -> Result<()> {
         Wallpaper::set(&self.wallpaper_target_path)?;
-        Ok(())
-    }
-
-    fn init_terminal(self) -> Result<()> {
-        Wallust::update_terminal(&self.wallpaper_target_path)?;
         Ok(())
     }
 
