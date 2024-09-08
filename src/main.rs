@@ -10,6 +10,7 @@ use clap::{Parser, Subcommand};
 use commands::{
     application::{ApplicationCommand, ApplicationCommandHandler},
     brightness::{BrightnessCommand, BrightnessCommandHandler},
+    install::{InstallCommand, InstallCommandHandler},
     theme::{ThemeCommand, ThemeCommandHandler},
     volume::{VolumeCommand, VolumeCommandHandler},
 };
@@ -28,6 +29,7 @@ struct Cli {
 
 #[derive(Subcommand)]
 enum Commands {
+    Install(InstallCommand),
     #[clap(alias = "app")]
     Application(ApplicationCommand),
     Volume(VolumeCommand),
@@ -40,6 +42,7 @@ fn main() -> Result<()> {
 
     let config = Config::parse(cli.config)?;
     match &cli.command {
+        Commands::Install(cmd) => InstallCommandHandler::create().handle(cmd)?,
         Commands::Application(cmd) => ApplicationCommandHandler::create().handle(cmd)?,
         Commands::Theme(cmd) => ThemeCommandHandler::create(&config).handle(cmd)?,
         Commands::Volume(cmd) => VolumeCommandHandler::create(&config).handle(cmd)?,

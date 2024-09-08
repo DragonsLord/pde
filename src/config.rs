@@ -15,6 +15,7 @@ pub mod brightness_config;
 pub mod defaults;
 pub mod general_config;
 pub mod parse_utils;
+pub mod profiles_config;
 pub mod theme_config;
 pub mod volume_config;
 
