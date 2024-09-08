@@ -3,7 +3,7 @@ use clap::Args;
 use std::{
     io::{Cursor, Read},
     path::{Path, PathBuf},
-    process::Command,
+    process::{Command, Stdio},
 };
 
 use crate::{
@@ -97,13 +97,16 @@ impl ModuleConfig {
         for package in packages {
             cmd.arg(package);
         }
-        cmd.pde_run()?;
+        cmd.stdout(Stdio::inherit()).pde_run()?;
         Ok(())
     }
 
     fn execute_cmd(commands: &Vec<String>) -> Result<()> {
         for cmd in commands {
-            Command::from_string(cmd)?.pde_run()?;
+            println!("executing cmd: {}", cmd);
+            Command::from_string(cmd)?
+                .stdout(Stdio::inherit())
+                .pde_run()?;
         }
         Ok(())
     }
