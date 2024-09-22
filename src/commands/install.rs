@@ -65,38 +65,41 @@ impl InstallCommandHandler {
             .get(profile_name)
             .ok_or(anyhow!("'{}' profile defintion not found", profile_name))?;
 
-        profile
+        let modules: Result<Vec<&Vec<ModuleConfig>>> = profile
             .iter()
             .map(|module| {
                 config
                     .modules
                     .get(module)
                     .ok_or(anyhow!("{} module not found", module))
-                    .and_then(|cfg| match cfg {
-                        // TODO: consider mapping to another model
-                        ModuleConfig::Tool { tool, packages } => {
-                            let tool_config = config
-                                .tools
-                                .get(tool)
-                                .cloned()
-                                .ok_or(anyhow!("{} tool not found", &tool))?;
-
-                            Ok(ProfileModule::Tool {
-                                config: tool_config,
-                                packages: packages.clone(),
-                            })
-                        }
-                        ModuleConfig::Cmd { cmd } => Ok(ProfileModule::Cmd(cmd.clone())),
-                        ModuleConfig::Zip {
-                            extract_zip_to,
-                            packages,
-                        } => Ok(ProfileModule::Zip {
-                            target_dir: extract_zip_to.clone(),
-                            packages: packages.clone(),
-                        }),
-                    })
             })
-            .collect()
+            .collect();
+
+        let resolved: Result<Vec<ProfileModule>, _> = modules?
+            .into_iter()
+            .flatten()
+            .map(|cfg| match cfg {
+                ModuleConfig::Tool { tool, packages } => config
+                    .tools
+                    .get(tool)
+                    .cloned()
+                    .ok_or(anyhow!("{} tool not found", &tool))
+                    .map(|tool_config| ProfileModule::Tool {
+                        config: tool_config,
+                        packages: packages.clone(),
+                    }),
+                ModuleConfig::Cmd { cmd } => Ok(ProfileModule::Cmd(cmd.clone())),
+                ModuleConfig::Zip {
+                    extract_zip_to,
+                    packages,
+                } => Ok(ProfileModule::Zip {
+                    target_dir: extract_zip_to.clone(),
+                    packages: packages.clone(),
+                }),
+            })
+            .collect();
+
+        resolved
     }
 }
 

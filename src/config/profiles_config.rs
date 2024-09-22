@@ -14,7 +14,7 @@ pub struct ProfilesConfig {
     pub default_profile: Option<String>,
     pub profiles: HashMap<String, Vec<String>>,
     pub tools: HashMap<String, ToolConfig>,
-    pub modules: HashMap<String, ModuleConfig>,
+    pub modules: HashMap<String, Vec<ModuleConfig>>,
 }
 
 #[derive(Deserialize, Debug, Clone)]
