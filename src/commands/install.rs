@@ -7,7 +7,7 @@ use std::{
 };
 
 use crate::{
-    config::profiles_config::{ModuleConfig, ProfilesConfig},
+    config::profiles_config::{ModuleConfig, ProfilesConfig, ToolConfig},
     utils::command_extensions::CommandExtensions,
 };
 
@@ -16,6 +16,19 @@ pub struct InstallCommand {
     #[arg(short, long)]
     profile: Option<String>,
     profiles_path: Option<PathBuf>,
+}
+
+#[derive(Debug)]
+enum ProfileModule {
+    Tool {
+        config: ToolConfig,
+        packages: Vec<String>,
+    },
+    Cmd(Vec<String>),
+    Zip {
+        target_dir: PathBuf,
+        packages: Vec<String>,
+    },
 }
 
 pub struct InstallCommandHandler {}
@@ -36,7 +49,7 @@ impl InstallCommandHandler {
         Ok(())
     }
 
-    fn resolve_profile(self, cmd: &InstallCommand) -> Result<Vec<ModuleConfig>> {
+    fn resolve_profile(self, cmd: &InstallCommand) -> Result<Vec<ProfileModule>> {
         let config = ProfilesConfig::parse(&cmd.profiles_path)?;
         dbg!(&config);
 
@@ -62,43 +75,64 @@ impl InstallCommandHandler {
                     .and_then(|cfg| match cfg {
                         // TODO: consider mapping to another model
                         ModuleConfig::Tool { tool, packages } => {
-                            let resolved_tool = config
+                            let tool_config = config
                                 .tools
                                 .get(tool)
                                 .cloned()
                                 .ok_or(anyhow!("{} tool not found", &tool))?;
 
-                            Ok(ModuleConfig::Tool {
-                                tool: resolved_tool,
+                            Ok(ProfileModule::Tool {
+                                config: tool_config,
                                 packages: packages.clone(),
                             })
                         }
-                        rest => Ok(rest.clone()),
+                        ModuleConfig::Cmd { cmd } => Ok(ProfileModule::Cmd(cmd.clone())),
+                        ModuleConfig::Zip {
+                            extract_zip_to,
+                            packages,
+                        } => Ok(ProfileModule::Zip {
+                            target_dir: extract_zip_to.clone(),
+                            packages: packages.clone(),
+                        }),
                     })
             })
             .collect()
     }
 }
 
-impl ModuleConfig {
+impl ProfileModule {
     pub fn execute(&self) -> Result<()> {
         match self {
-            Self::Tool { tool, packages } => Self::execute_tool(tool, packages),
-            Self::Cmd { cmd } => Self::execute_cmd(cmd),
+            Self::Tool { config, packages } => Self::execute_tool(config, packages),
+            Self::Cmd(cmd) => Self::execute_cmd(cmd),
             Self::Zip {
-                extract_zip_to,
+                target_dir,
                 packages,
-            } => Self::execute_zip(extract_zip_to, packages),
+            } => Self::execute_zip(target_dir, packages),
         }
     }
 
-    fn execute_tool(tool: &str, packages: &Vec<String>) -> Result<()> {
-        let mut cmd = Command::from_string(tool)?;
-        for package in packages {
-            cmd.arg(package);
+    fn execute_tool(tool: &ToolConfig, packages: &Vec<String>) -> Result<()> {
+        println!("executing tool: {}", &tool.cmd);
+        let (cmd_prefix, cmd_suffix) = tool.cmd.split_once("{}").unwrap_or((&tool.cmd, ""));
+        if tool.batching {
+            let mut cmd = Command::from_string(cmd_prefix)?;
+            for package in packages {
+                cmd.arg(package);
+            }
+            cmd.arg(cmd_suffix).stdout(Stdio::inherit()).pde_run()?;
+            Ok(())
+        } else {
+            for package in packages {
+                Command::from_string(cmd_prefix)?
+                    .arg(package)
+                    .arg(cmd_suffix)
+                    .stdout(Stdio::inherit())
+                    .pde_run()?;
+            }
+
+            Ok(())
         }
-        cmd.stdout(Stdio::inherit()).pde_run()?;
-        Ok(())
     }
 
     fn execute_cmd(commands: &Vec<String>) -> Result<()> {

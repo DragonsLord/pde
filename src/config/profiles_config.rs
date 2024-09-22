@@ -13,8 +13,15 @@ use crate::config::parse_utils::ParseUtils;
 pub struct ProfilesConfig {
     pub default_profile: Option<String>,
     pub profiles: HashMap<String, Vec<String>>,
-    pub tools: HashMap<String, String>,
+    pub tools: HashMap<String, ToolConfig>,
     pub modules: HashMap<String, ModuleConfig>,
+}
+
+#[derive(Deserialize, Debug, Clone)]
+pub struct ToolConfig {
+    pub cmd: String,
+    #[serde(default)]
+    pub batching: bool,
 }
 
 #[derive(Deserialize, Debug, Clone)]
