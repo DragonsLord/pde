@@ -7,7 +7,11 @@ use std::{
 };
 
 use crate::{
-    config::profiles_config::{ModuleConfig, ProfilesConfig, ToolConfig},
+    config::profiles::{
+        module_config::{ModuleConfig, ModuleStep},
+        profiles_config::ProfilesConfig,
+        tools_config::ToolConfig,
+    },
     utils::command_extensions::CommandExtensions,
 };
 
@@ -21,11 +25,16 @@ pub struct InstallCommand {
 #[derive(Debug)]
 enum ProfileModule {
     Tool {
+        name: String,
         config: ToolConfig,
         packages: Vec<String>,
     },
-    Cmd(Vec<String>),
+    Cmd {
+        name: String,
+        commands: Vec<String>,
+    },
     Zip {
+        name: String,
         target_dir: PathBuf,
         packages: Vec<String>,
     },
@@ -65,7 +74,7 @@ impl InstallCommandHandler {
             .get(profile_name)
             .ok_or(anyhow!("'{}' profile defintion not found", profile_name))?;
 
-        let modules: Result<Vec<&Vec<ModuleConfig>>> = profile
+        let modules: Result<Vec<&ModuleConfig>> = profile
             .iter()
             .map(|module| {
                 config
@@ -77,22 +86,32 @@ impl InstallCommandHandler {
 
         let resolved: Result<Vec<ProfileModule>, _> = modules?
             .into_iter()
-            .flatten()
+            .flat_map(|cfg| cfg.steps.clone())
             .map(|cfg| match cfg {
-                ModuleConfig::Tool { tool, packages } => config
+                ModuleStep::Tool {
+                    tool,
+                    packages,
+                    name,
+                } => config
                     .tools
-                    .get(tool)
+                    .get(&tool)
                     .cloned()
                     .ok_or(anyhow!("{} tool not found", &tool))
                     .map(|tool_config| ProfileModule::Tool {
+                        name,
                         config: tool_config,
                         packages: packages.clone(),
                     }),
-                ModuleConfig::Cmd { cmd } => Ok(ProfileModule::Cmd(cmd.clone())),
-                ModuleConfig::Zip {
+                ModuleStep::Cmd { cmd, name } => Ok(ProfileModule::Cmd {
+                    name,
+                    commands: cmd.clone(),
+                }),
+                ModuleStep::Zip {
+                    name,
                     extract_zip_to,
                     packages,
                 } => Ok(ProfileModule::Zip {
+                    name,
                     target_dir: extract_zip_to.clone(),
                     packages: packages.clone(),
                 }),
@@ -106,17 +125,22 @@ impl InstallCommandHandler {
 impl ProfileModule {
     pub fn execute(&self) -> Result<()> {
         match self {
-            Self::Tool { config, packages } => Self::execute_tool(config, packages),
-            Self::Cmd(cmd) => Self::execute_cmd(cmd),
+            Self::Tool {
+                name,
+                config,
+                packages,
+            } => Self::execute_tool(name, config, packages),
+            Self::Cmd { name, commands } => Self::execute_cmd(name, commands),
             Self::Zip {
+                name,
                 target_dir,
                 packages,
-            } => Self::execute_zip(target_dir, packages),
+            } => Self::execute_zip(name, target_dir, packages),
         }
     }
 
-    fn execute_tool(tool: &ToolConfig, packages: &Vec<String>) -> Result<()> {
-        println!("executing tool: {}", &tool.cmd);
+    fn execute_tool(name: &str, tool: &ToolConfig, packages: &Vec<String>) -> Result<()> {
+        println!("[{}] executing tool: {}", name, &tool.cmd);
         let (cmd_prefix, cmd_suffix) = tool.cmd.split_once("{}").unwrap_or((&tool.cmd, ""));
         if tool.batching {
             let mut cmd = Command::from_string(cmd_prefix)?;
@@ -138,7 +162,8 @@ impl ProfileModule {
         }
     }
 
-    fn execute_cmd(commands: &Vec<String>) -> Result<()> {
+    fn execute_cmd(name: &str, commands: &Vec<String>) -> Result<()> {
+        println!("[{}] runnning commands", name);
         for cmd in commands {
             println!("executing cmd: {}", cmd);
             Command::from_string(cmd)?
@@ -148,7 +173,8 @@ impl ProfileModule {
         Ok(())
     }
 
-    fn execute_zip(target_dir: &Path, packages: &Vec<String>) -> Result<()> {
+    fn execute_zip(name: &str, target_dir: &Path, packages: &Vec<String>) -> Result<()> {
+        println!("[{}] getting zip package", name);
         for package_url in packages {
             let target_name = Self::package_name_from_path(package_url)?;
             let mut response = reqwest::blocking::get(package_url)?;
