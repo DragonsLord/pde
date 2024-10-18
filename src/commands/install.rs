@@ -141,19 +141,17 @@ impl ProfileModule {
 
     fn execute_tool(name: &str, tool: &ToolConfig, packages: &Vec<String>) -> Result<()> {
         println!("[{}] executing tool: {}", name, &tool.cmd);
-        let (cmd_prefix, cmd_suffix) = tool.cmd.split_once("{}").unwrap_or((&tool.cmd, ""));
         if tool.batching {
-            let mut cmd = Command::from_string(cmd_prefix)?;
+            let mut cmd = Command::from_string(&tool.cmd)?;
             for package in packages {
                 cmd.arg(package);
             }
-            cmd.arg(cmd_suffix).stdout(Stdio::inherit()).pde_run()?;
+            cmd.stdout(Stdio::inherit()).pde_run()?;
             Ok(())
         } else {
             for package in packages {
-                Command::from_string(cmd_prefix)?
+                Command::from_string(&tool.cmd)?
                     .arg(package)
-                    .arg(cmd_suffix)
                     .stdout(Stdio::inherit())
                     .pde_run()?;
             }

@@ -5,7 +5,8 @@ curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
 echo 'Installing build dependencies'
 # https://docs.rs/openssl/latest/openssl/#automatic
 sudo dnf install pkgconf perl-FindBin perl-IPC-Cmd openssl-devel
+source ~/.bashrc
 
 echo 'Building PDE CLI...'
 cargo build --release
-cp target/release/pde /usr/bin/pde
+sudo cp target/release/pde /usr/bin/pde
