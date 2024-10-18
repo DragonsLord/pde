@@ -23,9 +23,9 @@ pub enum ModuleStep {
         extract_zip_to: PathBuf,
         packages: Vec<String>,
     },
-    Cmd {
+    Script {
         name: String,
-        cmd: Vec<String>,
+        script: String,
     },
 }
 

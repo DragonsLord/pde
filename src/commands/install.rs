@@ -29,9 +29,9 @@ enum ProfileModule {
         config: ToolConfig,
         packages: Vec<String>,
     },
-    Cmd {
+    Script {
         name: String,
-        commands: Vec<String>,
+        script: String,
     },
     Zip {
         name: String,
@@ -102,10 +102,7 @@ impl InstallCommandHandler {
                         config: tool_config,
                         packages: packages.clone(),
                     }),
-                ModuleStep::Cmd { cmd, name } => Ok(ProfileModule::Cmd {
-                    name,
-                    commands: cmd.clone(),
-                }),
+                ModuleStep::Script { script, name } => Ok(ProfileModule::Script { name, script }),
                 ModuleStep::Zip {
                     name,
                     extract_zip_to,
@@ -130,7 +127,7 @@ impl ProfileModule {
                 config,
                 packages,
             } => Self::execute_tool(name, config, packages),
-            Self::Cmd { name, commands } => Self::execute_cmd(name, commands),
+            Self::Script { name, script } => Self::execute_script(name, &script),
             Self::Zip {
                 name,
                 target_dir,
@@ -160,14 +157,13 @@ impl ProfileModule {
         }
     }
 
-    fn execute_cmd(name: &str, commands: &Vec<String>) -> Result<()> {
-        println!("[{}] runnning commands", name);
-        for cmd in commands {
-            println!("executing cmd: {}", cmd);
-            Command::from_string(cmd)?
-                .stdout(Stdio::inherit())
-                .pde_run()?;
-        }
+    fn execute_script(name: &str, script: &str) -> Result<()> {
+        println!("[{}] runnning script", name);
+        Command::new("sh")
+            .arg("-c")
+            .arg(script)
+            .stdout(Stdio::inherit())
+            .pde_run()?;
         Ok(())
     }
 
