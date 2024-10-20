@@ -16,7 +16,12 @@ pub struct ThemeCommand {
 
 #[derive(Subcommand)]
 enum ThemeSubcommands {
-    SetWallpaper { wallpaper: PathBuf },
+    SetWallpaper {
+        wallpaper: PathBuf,
+        #[arg(long)]
+        #[clap(default_value_t = false)]
+        no_reload: bool,
+    },
     InitWallpaper,
 }
 
@@ -33,8 +38,11 @@ impl ThemeCommandHandler {
 
     pub fn handle(self, cmd: &ThemeCommand) -> Result<()> {
         match &cmd.command {
-            ThemeSubcommands::SetWallpaper { wallpaper } => {
-                self.set_wallpaper(wallpaper)?;
+            ThemeSubcommands::SetWallpaper {
+                wallpaper,
+                no_reload,
+            } => {
+                self.set_wallpaper(wallpaper, !no_reload)?;
             }
             ThemeSubcommands::InitWallpaper => {
                 self.init_wallpaper()?;
@@ -43,14 +51,17 @@ impl ThemeCommandHandler {
         Ok(())
     }
 
-    fn set_wallpaper(self, wallpaper_path: &Path) -> Result<()> {
+    fn set_wallpaper(self, wallpaper_path: &Path, reload: bool) -> Result<()> {
         save_as_png(wallpaper_path, &self.wallpaper_target_path)?;
         Wallust::run(wallpaper_path)?;
-        Wallpaper::set(&self.wallpaper_target_path)?;
 
-        // TODO: make configurable
-        Self::reload("waybar")?;
-        Self::reload("swaync")?;
+        if reload {
+            Wallpaper::set(&self.wallpaper_target_path)?;
+
+            // TODO: make configurable
+            Self::reload("waybar")?;
+            Self::reload("swaync")?;
+        }
 
         Ok(())
     }
