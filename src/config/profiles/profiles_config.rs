@@ -47,7 +47,7 @@ impl ProfilesConfig {
             .map(PathBuf::from)
             .unwrap_or_else(|_| {
                 let home_dir = env::var("HOME").expect("HOME variable is not set");
-                Path::new(&home_dir).join(".config/pde/profiles.toml")
+                Path::new(&home_dir).join(".config/pde/install/profiles.toml")
             })
     }
 
