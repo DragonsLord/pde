@@ -1,4 +1,4 @@
-use anyhow::{bail, Result};
+use anyhow::{anyhow, bail, Result};
 use std::process::Command;
 
 pub trait CommandExtensions {
@@ -9,6 +9,8 @@ pub trait CommandExtensions {
     fn killall_if_running(process: &str) -> Result<()>;
 
     fn dispatch(program: &str) -> Command;
+
+    fn from_string(cmd_str: &str) -> Result<Command>;
 }
 
 impl CommandExtensions for Command {
@@ -49,5 +51,19 @@ impl CommandExtensions for Command {
         let mut cmd = Command::new("hyprctl");
         cmd.args(["dispatch", "--", "exec", program]);
         cmd
+    }
+
+    fn from_string(cmd_str: &str) -> Result<Command> {
+        let mut cmd_iter = cmd_str.split(" ");
+        let cmd_name = cmd_iter
+            .next()
+            .ok_or(anyhow!("malformed '{}' command", cmd_str))?;
+
+        let mut cmd = Command::new(cmd_name);
+        for arg in cmd_iter {
+            cmd.arg(arg);
+        }
+
+        Ok(cmd)
     }
 }
