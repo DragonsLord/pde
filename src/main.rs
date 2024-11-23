@@ -11,6 +11,7 @@ use commands::{
     application::{ApplicationCommand, ApplicationCommandHandler},
     brightness::{BrightnessCommand, BrightnessCommandHandler},
     install::{InstallCommand, InstallCommandHandler},
+    monitor::{MonitorCommand, MonitorCommandHandler},
     theme::{ThemeCommand, ThemeCommandHandler},
     volume::{VolumeCommand, VolumeCommandHandler},
 };
@@ -35,6 +36,7 @@ enum Commands {
     Volume(VolumeCommand),
     Brightness(BrightnessCommand),
     Theme(ThemeCommand),
+    Monitor(MonitorCommand),
 }
 
 fn main() -> Result<()> {
@@ -47,6 +49,7 @@ fn main() -> Result<()> {
         Commands::Theme(cmd) => ThemeCommandHandler::create(&config).handle(cmd)?,
         Commands::Volume(cmd) => VolumeCommandHandler::create(&config).handle(cmd)?,
         Commands::Brightness(cmd) => BrightnessCommandHandler::create(&config).handle(cmd)?,
+        Commands::Monitor(cmd) => MonitorCommandHandler::create().handle(cmd)?,
     }
 
     Ok(())

@@ -54,7 +54,7 @@ impl ModuleConfig {
         if !input_path.exists() {
             bail!(
                 "{} not found",
-                input_path.to_str().expect("valid tools path")
+                input_path.to_str().expect("valid modules path")
             );
         }
 
