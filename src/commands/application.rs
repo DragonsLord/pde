@@ -1,8 +1,9 @@
 use anyhow::Result;
 use clap::{Args, Subcommand};
+use hyprland::dispatch::{Dispatch, DispatchType};
 use std::process::Command;
 
-use crate::utils::command_extensions::CommandExtensions;
+use crate::{modules::flatpak::Flatpak, utils::command_extensions::CommandExtensions};
 
 #[derive(Args)]
 pub struct ApplicationCommand {
@@ -14,6 +15,8 @@ pub struct ApplicationCommand {
 enum ApplicationSubcommands {
     Toggle {
         app: String,
+        #[arg(long, default_value = "false")]
+        flatpak: bool,
         #[arg(short, long)]
         special_workspace: Option<String>,
     },
@@ -31,23 +34,50 @@ impl ApplicationCommandHandler {
         match &cmd.command {
             ApplicationSubcommands::Toggle {
                 app,
+                flatpak,
                 special_workspace,
             } => {
-                if !Command::is_running(app)? {
-                    //TODO: app args support
-                    Command::dispatch(app).pde_run()?;
-                    return Ok(());
-                }
-
-                if let Some(workspace) = special_workspace {
-                    Command::new("hyprctl")
-                        .args(["dispatch", "togglespecialworkspace"])
-                        .arg(workspace)
-                        .pde_run()?;
+                if *flatpak {
+                    Self::handle_flatpak_app(app, special_workspace)?
                 } else {
-                    Command::new("killall").arg(app).pde_run()?;
+                    Self::handle_sys_appa(app, special_workspace)?
                 }
             }
+        }
+
+        Ok(())
+    }
+
+    fn handle_flatpak_app(app: &str, special_workspace: &Option<String>) -> Result<()> {
+        if !Flatpak::is_running(app)? {
+            Dispatch::call(DispatchType::Exec(&format!("flatpak run {}", app)))?;
+            return Ok(());
+        }
+
+        if let Some(workspace) = special_workspace {
+            Dispatch::call(DispatchType::ToggleSpecialWorkspace(Some(
+                workspace.to_owned(),
+            )))?
+        } else {
+            Flatpak::kill(app)?;
+        }
+
+        Ok(())
+    }
+
+    fn handle_sys_appa(app: &str, special_workspace: &Option<String>) -> Result<()> {
+        if !Command::is_running(app)? {
+            //TODO: app args support
+            Dispatch::call(DispatchType::Exec(app))?;
+            return Ok(());
+        }
+
+        if let Some(workspace) = special_workspace {
+            Dispatch::call(DispatchType::ToggleSpecialWorkspace(Some(
+                workspace.to_owned(),
+            )))?
+        } else {
+            Command::new("killall").arg(app).pde_run()?;
         }
 
         Ok(())
