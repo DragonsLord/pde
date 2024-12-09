@@ -8,6 +8,7 @@ anyhow = "1.0.86"
 clap = { version = "4.5.16", features = ["derive"] }
 hyprland = "0.3.13"
 image = "0.25.2"
+regex = "1.11.1"
 reqwest = { version = "0.12.7", features = ["blocking"] }
 serde = { version = "1.0.209", features = ["derive"] }
 toml = "0.8.19"

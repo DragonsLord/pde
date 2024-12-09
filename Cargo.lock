@@ -1558,6 +1558,7 @@ dependencies = [
  "clap",
  "hyprland",
  "image",
+ "regex",
  "reqwest",
  "serde",
  "toml",
