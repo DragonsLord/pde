@@ -37,7 +37,6 @@ impl ApplicationCommandHandler {
 
     // TODO: notifications on failures, cursor progress?
     pub fn handle(self, cmd: &ApplicationCommand) -> Result<()> {
-        dbg!(&cmd);
         match &cmd.command {
             ApplicationSubcommands::Toggle {
                 app,
@@ -78,18 +77,7 @@ impl ApplicationCommandHandler {
         special_workspace: &Option<String>,
         window_rules: &Vec<String>,
     ) -> Result<()> {
-        let running = Clients::get()?
-            .into_iter()
-            .filter(|c| c.initial_class == app)
-            .filter(|c| {
-                dbg!(c);
-                if let Some(workspace_name) = special_workspace {
-                    return c.workspace.name == format!("special:{}", workspace_name);
-                }
-                return true;
-            })
-            .count()
-            > 0;
+        let running = Self::is_sys_app_running(app, special_workspace)?;
 
         if !running {
             let rules = window_rules
@@ -118,5 +106,25 @@ impl ApplicationCommandHandler {
         }
 
         Ok(())
+    }
+
+    fn is_sys_app_running(app: &str, special_workspace: &Option<String>) -> Result<bool> {
+        let mut client_iter = Clients::get()?
+            .into_iter()
+            .filter(|c| c.initial_class == app);
+
+        if let Some(workspace_name) = special_workspace {
+            // For special workspaces check only hyprland clients
+            return Ok(
+                client_iter.any(|c| c.workspace.name == format!("special:{}", workspace_name))
+            );
+        }
+
+        if client_iter.count() > 0 {
+            return Ok(true);
+        }
+
+        // if no hyprland clients check sys processes
+        Command::is_running(app)
     }
 }
