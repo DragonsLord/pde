@@ -6,7 +6,7 @@ edition = "2021"
 [dependencies]
 anyhow = "1.0.86"
 clap = { version = "4.5.16", features = ["derive"] }
-hyprland = "0.3.13"
+hyprland = { git = "https://github.com/hyprland-community/hyprland-rs", branch = "master" }
 image = "0.25.2"
 regex = "1.11.1"
 reqwest = { version = "0.12.7", features = ["blocking"] }
