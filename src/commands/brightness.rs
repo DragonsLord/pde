@@ -9,6 +9,7 @@ use crate::{
         brightness::{BrightnessControl, BrightnessControlStep},
         notification::Notification,
     },
+    utils::ascii_utils::get_ascii_progress_bar,
 };
 
 #[derive(Args)]
@@ -97,7 +98,8 @@ impl BrightnessCommandHandler {
 
     fn notify(self, ctl: &BrightnessControl, icon: &str) -> Result<()> {
         let brightness_value = ctl.get()?;
-        Notification::message(&format!("Brightness: {:.0}%", brightness_value))
+        Notification::message(&format!("Brightness ({:.0}%)", brightness_value))
+            .body(get_ascii_progress_bar(brightness_value as f32, 100.0))
             .transient()
             .timeout(self.notification_timeout)
             .sync_group("pde_brightness")

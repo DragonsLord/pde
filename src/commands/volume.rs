@@ -6,6 +6,7 @@ use clap::{Args, Subcommand};
 use crate::{
     config::Config,
     modules::{notification::Notification, volume::VolumeControl},
+    utils::ascii_utils::get_ascii_progress_bar,
 };
 
 #[derive(Args)]
@@ -58,6 +59,7 @@ impl VolumeCommandHandler {
             }
             VolumeSubcommands::ToggleMute => {
                 self.ctl.toggle_mute()?;
+                // TODO: improve mute notification
                 self.notify("off")?;
             }
         }
@@ -68,7 +70,9 @@ impl VolumeCommandHandler {
     fn notify(self, icon: &str) -> Result<()> {
         let volume_value = self.ctl.get()?;
         let volume_pct = volume_value * 100f32;
-        Notification::message(&format!("Volume: {:.0}%", volume_pct))
+        let progress_bar = get_ascii_progress_bar(volume_value, self.ctl.get_limit());
+        Notification::message(&format!("Volume ({:.0}%)", volume_pct))
+            .body(progress_bar)
             .transient()
             .timeout(self.notification_timeout)
             .icon(&self.icons_dir.join(format!("volume-{}.svg", icon)))

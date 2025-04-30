@@ -18,6 +18,10 @@ impl VolumeControl {
         }
     }
 
+    pub fn get_limit(&self) -> f32 {
+        return self.limit;
+    }
+
     pub fn get(&self) -> Result<f32> {
         let stdout = Self::exec("get-volume", [&self.sink])?;
         let output = String::from_utf8(stdout)?;

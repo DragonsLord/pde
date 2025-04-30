@@ -4,7 +4,8 @@ use std::{path::Path, process::Command};
 use crate::{config::defaults::Defaults, utils::command_extensions::CommandExtensions};
 
 pub struct Notification<'a> {
-    message: String,
+    title: String,
+    body: Option<String>,
     icon: Option<&'a Path>,
     timeout: i32,
     urgency: String, // low, normal, critical
@@ -15,13 +16,19 @@ pub struct Notification<'a> {
 impl<'a> Notification<'a> {
     pub fn message(msg: &str) -> Self {
         Self {
-            message: msg.to_owned(),
+            title: msg.to_owned(),
+            body: None,
             icon: None,
             timeout: Defaults::notification_timeout_ms(),
             urgency: "low".to_owned(),
             transient: false,
             hints: vec![],
         }
+    }
+
+    pub fn body(mut self, body: String) -> Self {
+        self.body = Some(body);
+        self
     }
 
     pub fn icon(mut self, icon_path: &'a Path) -> Self {
@@ -62,8 +69,13 @@ impl<'a> Notification<'a> {
 
         cmd.args(["-u", &self.urgency])
             .args(["-t", &self.timeout.to_string()])
-            .arg(self.message)
-            .pde_run()?;
+            .arg(self.title);
+
+        if let Some(body) = self.body {
+            cmd.arg(body);
+        }
+
+        cmd.pde_run()?;
 
         Ok(())
     }
