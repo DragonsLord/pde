@@ -26,4 +26,16 @@ impl ParseUtils {
             None => None,
         })
     }
+
+    pub fn parse_paths<'de, D>(d: D) -> Result<Vec<PathBuf>, D::Error>
+    where
+        D: serde::de::Deserializer<'de>,
+    {
+        let value = Vec::<PathBuf>::deserialize(d)?;
+        Ok(value
+            .iter()
+            .map(|path| path.pde_resolve())
+            .flatten()
+            .collect())
+    }
 }

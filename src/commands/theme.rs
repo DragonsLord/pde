@@ -3,8 +3,10 @@ use clap::{Args, Subcommand};
 use regex::Regex;
 use std::collections::HashMap;
 use std::fs::read_to_string;
+use std::io::Write;
 use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
+use std::str::FromStr;
 
 use crate::config::Config;
 use crate::modules::{wallpaper::Wallpaper, wallust::Wallust};
@@ -19,6 +21,7 @@ pub struct ThemeCommand {
 
 #[derive(Subcommand)]
 enum ThemeSubcommands {
+    SelectWallpaper,
     SetWallpaper {
         wallpaper: PathBuf,
         #[arg(long)]
@@ -31,6 +34,8 @@ enum ThemeSubcommands {
 pub struct ThemeCommandHandler {
     wallpaper_target_path: PathBuf,
     theme_variables_path: PathBuf,
+    wallpapers_dirs: Vec<PathBuf>,
+    theme_selector_config_path: Option<PathBuf>,
     on_init_commands: Vec<String>,
 }
 
@@ -40,11 +45,16 @@ impl ThemeCommandHandler {
             wallpaper_target_path: Self::resolve_wallpaper_target_path(config),
             theme_variables_path: Self::resolve_theme_variables_path(config),
             on_init_commands: config.theme.on_init.clone(),
+            wallpapers_dirs: Self::resolve_wallpapers_folder(config),
+            theme_selector_config_path: config.theme.selector.config_path.clone(),
         }
     }
 
     pub fn handle(self, cmd: &ThemeCommand) -> Result<()> {
         match &cmd.command {
+            ThemeSubcommands::SelectWallpaper => {
+                self.select_wallpaper()?;
+            }
             ThemeSubcommands::SetWallpaper {
                 wallpaper,
                 no_reload,
@@ -56,6 +66,60 @@ impl ThemeCommandHandler {
             }
         }
         Ok(())
+    }
+
+    fn select_wallpaper(&self) -> Result<()> {
+        let mut binding = Command::new("rofi");
+        let menu_cmd = binding.args(["-dmenu", "-show-icons", "-p", " ", "-format", "i"]);
+
+        if let Some(config_path) = &self.theme_selector_config_path {
+            menu_cmd.args(["-config", config_path.to_str().expect("valid config path")]);
+        }
+
+        let mut menu = menu_cmd
+            .stdin(Stdio::piped())
+            .stdout(Stdio::piped())
+            .spawn()?;
+
+        let mut all_items: Vec<PathBuf> = vec![];
+        {
+            let mut menu_in = menu.stdin.take().expect("piped rofi menu stdin");
+
+            for dir in self.wallpapers_dirs.iter() {
+                let wallpaper_list = dir.read_dir()?;
+                for wallpaper in wallpaper_list {
+                    let path = wallpaper?.path();
+                    if !path.is_file() {
+                        continue;
+                    }
+                    if let Some(filename) = path.file_name() {
+                        writeln!(
+                            menu_in,
+                            "{}\0icon\x1f{}",
+                            filename.to_str().unwrap(),
+                            path.display(),
+                        )?;
+                        all_items.push(path);
+                    }
+                }
+            }
+
+            menu_in.flush()?;
+        }
+
+        let output = menu.wait_with_output()?;
+        let output_string = String::from_utf8_lossy(&output.stdout);
+        if output_string.is_empty() {
+            return Ok(());
+        }
+
+        let idx = usize::from_str(&output_string.trim())?;
+        let selected_wallpaper = all_items[idx].clone();
+        println!("setting '{}' wallpaper...", &selected_wallpaper.display());
+
+        self.set_wallpaper(&selected_wallpaper, true)?;
+
+        return Ok(());
     }
 
     fn set_wallpaper(&self, wallpaper_path: &Path, reload: bool) -> Result<()> {
@@ -125,6 +189,13 @@ impl ThemeCommandHandler {
                 path
             }
         }
+    }
+
+    fn resolve_wallpapers_folder(config: &Config) -> Vec<PathBuf> {
+        if config.theme.selector.wallpapers_dirs.is_empty() {
+            return vec!["~/wallpapers".into()];
+        }
+        config.theme.selector.wallpapers_dirs.to_owned()
     }
 
     fn resolve_theme_variables_path(config: &Config) -> PathBuf {
